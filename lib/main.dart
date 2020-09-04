@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:balta7184/models/item.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(MyApp());
@@ -24,15 +27,6 @@ class HomePage extends StatefulWidget {
   var items = new List<Item>();
   HomePage() {
     items = [];
-    items.add(
-      Item(title: 'Item 1', done: false, key: '1'),
-    );
-    items.add(
-      Item(title: 'Item 2', done: true, key: '2'),
-    );
-    items.add(
-      Item(title: 'Item 3', done: false, key: '3'),
-    );
   }
   @override
   _HomePageState createState() => _HomePageState();
@@ -42,22 +36,51 @@ class _HomePageState extends State<HomePage> {
   var newTaskCtrl = TextEditingController();
   void add() {
     if (newTaskCtrl.text.isEmpty) return;
+    int newKey;
+    if (widget.items.isEmpty) {
+      newKey = 0;
+    } else {
+      newKey = int.parse(widget.items.last.key) + 1;
+    }
     var newItem = Item(
       title: newTaskCtrl.text,
       done: false,
-      key: (int.parse(widget.items.last.key) + 1).toString(),
+      key: newKey.toString(),
     );
     setState(() {
       widget.items.indexOf(newItem);
       widget.items.add(newItem);
       newTaskCtrl.clear();
+      save();
     });
+  }
+
+  Future load() async {
+    var prefs = await SharedPreferences.getInstance();
+    var data = prefs.getString('data');
+    if (data != null) {
+      Iterable decode = jsonDecode(data);
+      List<Item> result = decode.map((x) => Item.fromJson(x)).toList();
+      setState(() {
+        widget.items = result;
+      });
+    }
+  }
+
+  _HomePageState() {
+    load();
   }
 
   void del(int index) {
     setState(() {
       widget.items.removeAt(index);
+      save();
     });
+  }
+
+  save() async {
+    var prefs = await SharedPreferences.getInstance();
+    await prefs.setString('data', jsonEncode(widget.items));
   }
 
   @override
@@ -92,6 +115,7 @@ class _HomePageState extends State<HomePage> {
               onChanged: (value) {
                 setState(() {
                   item.done = value;
+                  save();
                 });
               },
             ),
